@@ -123,7 +123,7 @@ class ADclient:
 
         self.conn.modify(group_dn[0], {'member': [(MODIFY_ADD, [_object_dn[0]])]})
         
-        return self.get_memberOf(group).member
+        return self.get_ADobject(group).member
 
 
     # Removing users, computers, or groups from groups
