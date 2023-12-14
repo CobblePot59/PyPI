@@ -14,7 +14,7 @@ installing
     pip install pycryptodome beefish
 
 Dependencies:
-[pycryptodome](https://www.pycryptodome.org/)
+* [pycryptodome](https://www.pycryptodome.org/)
 
 
 command-line options
