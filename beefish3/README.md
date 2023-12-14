@@ -2,27 +2,25 @@ beefish3
 =======
 
 Fork of beefish : https://github.com/coleifer/beefish.git
+<br>
 Easy file encryption using pycryptodome.
 
-.. image:: http://media.charlesleifer.com/blog/photos/beefish.jpg
+![alt text](http://media.charlesleifer.com/blog/photos/beefish.jpg) 
 
 
 installing
 ----------
 
-::
-
     pip install pycryptodome beefish
 
 Dependencies:
-
-* `pycryptodome <https://www.pycryptodome.org/>`_
+[pycryptodome](https://www.pycryptodome.org/)
 
 
 command-line options
 --------------------
 
-Usage::
+Usage:
 
     beefish3.py [-tkedaq] in_file [out_file]
 
@@ -38,7 +36,7 @@ Usage::
 examples
 --------
 
-beefish3 can be used to encrypt and decrypt file-like objects::
+beefish3 can be used to encrypt and decrypt file-like objects:
 
     from beefish3 import encrypt, decrypt
 
@@ -52,7 +50,7 @@ beefish3 can be used to encrypt and decrypt file-like objects::
         with open('secrets.dec', 'wb') as out_fh:
             decrypt(fh, out_fh, 'secret p@ssword')
 
-you can use a shortcut if you like::
+you can use a shortcut if you like:
 
     from beefish3 import encrypt_file, decrypt_file
 
@@ -63,7 +61,7 @@ you can use a shortcut if you like::
     decrypt_file('secrets.enc', 'secrets.dec', 'p@ssword')
 
 
-you can use it from the command-line::
+you can use it from the command-line:
 
     beefish3.py -e secrets.txt secrets.enc
     beefish3.py -d secrets.enc secrets.dec
