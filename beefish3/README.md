@@ -11,7 +11,7 @@ Easy file encryption using pycryptodome.
 installing
 ----------
 
-    pip install pycryptodome beefish
+    pip install pycryptodome beefish3
 
 Dependencies:
 * [pycryptodome](https://www.pycryptodome.org/)
