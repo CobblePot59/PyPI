@@ -1,7 +1,52 @@
 # ADmanage
 
-The provided script is a Python program that interacts with an Active Directory (AD) server using the LDAP protocol. It allows you to perform various operations on AD objects such as users, groups, and computers.
+The provided script is a Python program that interacts with an Active Directory (AD) server using the LDAP protocol. It allows you to perform various operations on DNS entries and AD objects (users, groups and computers).
 
+#### get_DNSentries
+```sh
+from ADmanage import ADclient
+
+ad_client = ADclient(domain='cobblepot59.int', username='Administrator', password='Password1', dc_ip='ldap.cobblepot59.int', base_dn='DC=cobblepot59,DC=int', secure=True)
+result = ad_client.get_DNSentries()
+ad_client.disconnect()
+print(result)
+```
+#### get_DNSentry
+```sh
+from ADmanage import ADclient
+
+ad_client = ADclient(domain='cobblepot59.int', username='Administrator', password='Password1', dc_ip='ldap.cobblepot59.int', base_dn='DC=cobblepot59,DC=int', secure=True)
+result = ad_client.get_DNSentry('quad9')
+ad_client.disconnect()
+print(result)
+```
+#### add_DNSentry
+```sh
+from ADmanage import ADclient
+
+ad_client = ADclient(domain='cobblepot59.int', username='Administrator', password='Password1', dc_ip='ldap.cobblepot59.int', base_dn='DC=cobblepot59,DC=int', secure=True)
+result = ad_client.add_DNSentry('quad9', '149.112.112.112')
+ad_client.disconnect()
+print(result)
+```
+#### modify_DNSentry
+```sh
+from ADmanage import ADclient
+
+ad_client = ADclient(domain='cobblepot59.int', username='Administrator', password='Password1', dc_ip='ldap.cobblepot59.int', base_dn='DC=cobblepot59,DC=int', secure=True)
+result = ad_client.modify_DNSentry('quad9', '9.9.9.9')
+ad_client.disconnect()
+print(result)
+```
+#### del_DNSentry
+```sh
+from ADmanage import ADclient
+
+ad_client = ADclient(domain='cobblepot59.int', username='Administrator', password='Password1', dc_ip='ldap.cobblepot59.int', base_dn='DC=cobblepot59,DC=int', secure=True)
+result = ad_client.del_DNSentry('quad9')
+ad_client.disconnect()
+print(result)
+```
 #### get_ADobjects
 Searches for and returns all user, group, and computer objects.
 ```sh
