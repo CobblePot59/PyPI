@@ -155,9 +155,11 @@ class ADclient:
         self.conn.modify(targetentry['dn'], {'dnsRecord': [(MODIFY_REPLACE, [record.getData()])],'dNSTombstoned': [(MODIFY_REPLACE, True)]})
 
     # List all user, group and computer objects
-    def get_ADobjects(self):
-        search_filter = f"(|(objectClass=user)(objectClass=group)(objectClass=computer))"
-        self.conn.search(self.base_dn, search_filter, attributes=['*'])
+    def get_ADobjects(self, custom_base_dn=None, custom_filter=None, custom_attributes=None):
+        base_dn = custom_base_dn or self.base_dn
+        search_filter = custom_filter or "(|(objectClass=user)(objectClass=group)(objectClass=computer))"
+        attributes = custom_attributes or ['*']
+        self.conn.search(base_dn, search_filter=search_filter,  attributes=attributes, search_scope=SUBTREE)
 
         if self.conn.entries:
             return self.conn.entries
@@ -189,8 +191,7 @@ class ADclient:
 
             self.reset_password(sam, password)
             self.modify_ADobject_attributes(sam, attributes={'userAccountControl': '512'})
-            
-    
+
         if attributes['objectClass'] == 'computer':
             sam = f"{attributes['cn'].lower()}$"
             cn = attributes['cn']
@@ -210,14 +211,14 @@ class ADclient:
             }
 
             self.modify_ADobject_attributes(sam, changes)
-        
+
         if attributes['objectClass'] == 'group':
             sam = f"{attributes['cn'].lower()}"
             cn = attributes['cn']
             attributes['sAMAccountName'] = sam
 
             self.conn.add(f"cn={cn},{ou}", attributes=attributes)
-        
+
         return self.get_ADobject(sam)
 
     # Removing users, computers or groups
@@ -235,7 +236,7 @@ class ADclient:
 
         if self.conn.entries:
             return self.conn.entries[0].member
-        
+
 
     # List groups of users
     def get_memberOf(self, username):
@@ -252,7 +253,7 @@ class ADclient:
         group_dn = self.get_ADobject(group).distinguishedName
 
         self.conn.modify(group_dn[0], {'member': [(MODIFY_ADD, [_object_dn[0]])]})
-        
+
         return self.get_ADobject(group).member
 
 
@@ -262,7 +263,7 @@ class ADclient:
         group_dn = self.get_ADobject(group).distinguishedName
 
         self.conn.modify(group_dn[0], {'member': [(MODIFY_DELETE, _object_dn[0])]})
-        
+
         return self.get_ADobject(group).member
 
     # Updating user, computer, or group attributes.
@@ -271,7 +272,7 @@ class ADclient:
 
         for key, value in attributes.items():
             self.conn.modify(_object_dn[0], {key: [(MODIFY_REPLACE, [value])]})
-        
+
         return self.get_ADobject(_object)
 
 
