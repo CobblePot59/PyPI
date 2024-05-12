@@ -1,30 +1,31 @@
 import ldap3
-from ldap3 import Server, Connection, ALL, SUBTREE, MODIFY_ADD, MODIFY_DELETE, MODIFY_REPLACE
+from ldap3 import Server, Connection, ALL, SUBTREE, MODIFY_ADD, MODIFY_DELETE, MODIFY_REPLACE, NTLM
 from impacket.structure import Structure
 import socket
 import dns.resolver
 import datetime
+import json
 
 class ADclient:
-    def __init__(self, domain, username, password, dc_ip, base_dn=None, secure=False):
+    def __init__(self, domain, username, password, hashes, dc_ip, base_dn=None, secure=False):
         self.domain = domain
         self.username = username
-        self.sam = f"{username}@{domain}"
-        self.password = password
+        self.sam = f"{domain}\\{username}"
+        self.password = password or hashes
         self.dc_ip = dc_ip
         self.base_dn = base_dn
         self.secure = secure
-        self.domainroot = f"DC={domain.split('.')[0]},DC={domain.split('.')[1]}"
-        self.dnsroot = f"DC={domain},CN=MicrosoftDNS,DC=DomainDnsZones,{self.domainroot}"
+        self.domain_root = f"DC={domain.split('.')[0]},DC={domain.split('.')[1]}"
+        self.dnsroot = f"DC={domain},CN=MicrosoftDNS,DC=DomainDnsZones,{self.domain_root}"
         self.conn = self.connect_to_ldap()
 
     def connect_to_ldap(self):
         dc_url = f"ldaps://{self.dc_ip}:636" if self.secure else f"ldap://{self.dc_ip}:389"
         if not self.base_dn:
-            self.base_dn = self.domainroot
+            self.base_dn = self.domain_root
 
         server = Server(dc_url, get_info=ALL)
-        conn = Connection(server, user=self.sam, password=self.password, auto_bind=True)
+        conn = Connection(server, user=self.sam, password=self.password, authentication=NTLM, auto_bind=True)
         return conn
 
     def disconnect(self):
@@ -108,6 +109,9 @@ class ADclient:
             return entry
 
     def get_DNSentry(self, target):
+        if not self.get_raw_entry(target):
+            return "Entry doesn't exist"
+
         record_data = self.get_raw_entry(target)['raw_attributes']['dnsRecord'][0][-4:]
         parsed_record = self.DNS_RPC_RECORD_A(record_data)
         ip_address = parsed_record.formatCanonical()
@@ -117,7 +121,7 @@ class ADclient:
         record_dn = f'DC={target},{self.dnsroot}'
         node_data = {
             # Schema is in the root domain (take if from schemaNamingContext to be sure)
-            'objectCategory': f'CN=Dns-Node,CN=Schema,CN=Configuration,{self.domainroot}',
+            'objectCategory': f'CN=Dns-Node,CN=Schema,CN=Configuration,{self.domain_root}',
             'dNSTombstoned': False,
             'name': target
         }
@@ -130,6 +134,9 @@ class ADclient:
 
     def modify_DNSentry(self, target, data):
         targetentry = self.get_raw_entry(target)
+        if not targetentry:
+            return "Entry doesn't exist"
+
         records = []
         for record in targetentry['raw_attributes']['dnsRecord']:
             dr = self.DNS_RECORD(record)
@@ -146,6 +153,9 @@ class ADclient:
 
     def del_DNSentry(self, target):
         targetentry = self.get_raw_entry(target)
+        if not targetentry:
+            return "Entry doesn't exist"
+
         diff = datetime.datetime.today() - datetime.datetime(1601,1,1)
         tstime = int(diff.total_seconds()*10000)
         # Add a null record
@@ -162,7 +172,10 @@ class ADclient:
         self.conn.search(base_dn, search_filter=search_filter,  attributes=attributes, search_scope=SUBTREE)
 
         if self.conn.entries:
-            return self.conn.entries
+            entries = [json.loads(entry.entry_to_json()) for entry in self.conn.entries]
+            for entry in entries:
+                entry['attributes'] = {key: str(value[0]) if isinstance(value, list) and len(value) == 1 else value for key, value in entry["attributes"].items()}
+            return [entry['attributes'] for entry in entries]
 
     # Search for user, group, or computer objects with sAMAccountName value
     def get_ADobject(self, _object):
@@ -170,10 +183,14 @@ class ADclient:
         self.conn.search(self.base_dn, search_filter, attributes=['*'])
 
         if self.conn.entries:
-            return self.conn.entries[0]
+            entries = [json.loads(entry.entry_to_json()) for entry in self.conn.entries]
+            for entry in entries:
+                entry['attributes'] = {key: str(value[0]) if isinstance(value, list) and len(value) == 1 else value for key, value in entry["attributes"].items()}
+            return entries[0]['attributes']
 
     # Adding users, computers or groups
     def add_ADobject(self, ou, attributes):
+        attributes = json.loads(str(attributes).replace("'", "\""))
         if attributes['objectClass'] == 'user':
             sam = f"{attributes['givenName'].lower()[0]}{attributes['sn'].lower()}"
             cn = f"{attributes['givenName']} {attributes['sn']}"
@@ -223,11 +240,12 @@ class ADclient:
 
     # Removing users, computers or groups
     def del_ADobject(self, _object):
-        _object_dn = self.get_ADobject(_object).distinguishedName
-        if self.conn.delete(_object_dn[0]):
-            return 200
-        else:
-            return None
+        if not self.get_ADobject(_object):
+            return "Object doesn't exist"
+
+        _object_dn = self.get_ADobject(_object)['distinguishedName']
+        self.conn.delete(_object_dn)
+
 
     # List members of group
     def get_member(self, group_name):
@@ -235,7 +253,7 @@ class ADclient:
         self.conn.search(self.base_dn, search_filter, attributes=['member'])
 
         if self.conn.entries:
-            return self.conn.entries[0].member
+            return self.conn.entries[0].member.value
 
 
     # List groups of users
@@ -244,44 +262,59 @@ class ADclient:
         self.conn.search(self.base_dn, search_filter, attributes=['memberOf'])
 
         if self.conn.entries:
-            return self.conn.entries[0].memberOf
+            return self.conn.entries[0].memberOf.value
 
 
     # Adding users, computers, or groups to groups
     def add_ADobject_to_group(self, _object, group):
-        _object_dn = self.get_ADobject(_object).distinguishedName
-        group_dn = self.get_ADobject(group).distinguishedName
+        if not self.get_ADobject(_object) or not self.get_ADobject(group):
+            return "Group, User or Computer doesn't exist"
 
-        self.conn.modify(group_dn[0], {'member': [(MODIFY_ADD, [_object_dn[0]])]})
+        _object_dn = self.get_ADobject(_object)['distinguishedName']
+        group_dn = self.get_ADobject(group)['distinguishedName']
 
-        return self.get_ADobject(group).member
+        self.conn.modify(group_dn, {'member': [(MODIFY_ADD, [_object_dn])]})
+
+        return self.get_ADobject(group)['member']
 
 
     # Removing users, computers, or groups from groups
     def del_ADobject_from_group(self, _object, group):
-        _object_dn = self.get_ADobject(_object).distinguishedName
-        group_dn = self.get_ADobject(group).distinguishedName
+        if not self.get_ADobject(_object) or not self.get_ADobject(group):
+            return "Group, User or Computer doesn't exist"
 
-        self.conn.modify(group_dn[0], {'member': [(MODIFY_DELETE, _object_dn[0])]})
+        _object_dn = self.get_ADobject(_object)['distinguishedName']
+        group_dn = self.get_ADobject(group)['distinguishedName']
 
-        return self.get_ADobject(group).member
+        self.conn.modify(group_dn, {'member': [(MODIFY_DELETE, _object_dn)]})
+        try:
+            return get_ADobject(group)['member']
+        except KeyError:
+            return None
 
     # Updating user, computer, or group attributes.
     def modify_ADobject_attributes(self, _object, attributes):
-        _object_dn = self.get_ADobject(_object).distinguishedName
+        attributes = json.loads(str(attributes).replace("'", "\""))
+        
+        if not self.get_ADobject(_object):
+            return "Object doesn't exist"
+
+        _object_dn = self.get_ADobject(_object)['distinguishedName']
 
         for key, value in attributes.items():
-            self.conn.modify(_object_dn[0], {key: [(MODIFY_REPLACE, [value])]})
-
+            self.conn.modify(_object_dn, {key: [(MODIFY_REPLACE, [value])]})
         return self.get_ADobject(_object)
 
 
     # Reset password (Only work with ssl bind)
     def reset_password(self, username, password):
-        user_dn = self.get_ADobject(username).distinguishedName
+        if self.get_ADobject(username):
+            return "User doesn't exist"
+
+        user_dn = self.get_ADobject(username)['distinguishedName']
 
         if self.conn and self.secure:
-            if ldap3.extend.microsoft.modifyPassword.ad_modify_password(self.conn, user_dn[0], password, old_password=None):
+            if ldap3.extend.microsoft.modifyPassword.ad_modify_password(self.conn, user_dn, password, old_password=None):
                 return 200
             else:
                 return None
@@ -291,8 +324,11 @@ class ADclient:
 
     # Enable users or computers
     def enable_ADobject(self, _object):
+        if not self.get_ADobject(_object):
+            return "Object doesn't exist"
+
         uacFlag = 2
-        old_uac = self.get_ADobject(_object).userAccountControl
+        old_uac = self.get_ADobject(_object)['userAccountControl']
         new_uac = int(str(old_uac)) & ~uacFlag
 
         attributes = {
@@ -305,8 +341,11 @@ class ADclient:
 
     # Disable users or computers
     def disable_ADobject(self, _object):
+        if not self.get_ADobject(_object):
+            return "Object doesn't exist"
+
         uacFlag = 2
-        old_uac = self.get_ADobject(_object).userAccountControl
+        old_uac = self.get_ADobject(_object)['userAccountControl']
         new_uac = int(str(old_uac)) | uacFlag
 
         attributes = {
