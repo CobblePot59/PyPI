@@ -1,5 +1,5 @@
 import ldap3
-from ldap3 import Server, Connection, ALL, SUBTREE, MODIFY_ADD, MODIFY_DELETE, MODIFY_REPLACE, NTLM
+from ldap3 import Server, Connection, ALL, SUBTREE, MODIFY_ADD, MODIFY_DELETE, MODIFY_REPLACE, NTLM, SIMPLE
 from impacket.structure import Structure
 import socket
 import dns.resolver
@@ -10,7 +10,7 @@ class ADclient:
     def __init__(self, domain, username, password, hashes, dc_ip, base_dn=None, secure=False):
         self.domain = domain
         self.username = username
-        self.sam = f"{domain}\\{username}"
+        self.sam = f"{domain.split('.')[0]}\\{username}"
         self.password = password or hashes
         self.dc_ip = dc_ip
         self.base_dn = base_dn
@@ -20,12 +20,17 @@ class ADclient:
         self.conn = self.connect_to_ldap()
 
     def connect_to_ldap(self):
-        dc_url = f"ldaps://{self.dc_ip}:636" if self.secure else f"ldap://{self.dc_ip}:389"
+        dc_url = f"ldap://{self.dc_ip}:389"
+        auth = NTLM
+        if self.secure:
+            auth = SIMPLE
+            dc_url = f"ldaps://{self.dc_ip}:636"
+        
         if not self.base_dn:
             self.base_dn = self.domain_root
 
-        server = Server(dc_url, get_info=ALL)
-        conn = Connection(server, user=self.sam, password=self.password, authentication=NTLM, auto_bind=True)
+        server = Server(dc_url, use_ssl=self.secure, get_info=ALL)
+        conn = Connection(server, user=self.sam, password=self.password, authentication=auth, auto_bind=True)
         return conn
 
     def disconnect(self):
