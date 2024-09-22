@@ -1,20 +1,21 @@
 import ldap3
 from ldap3 import Server, Connection, ALL, SUBTREE, MODIFY_ADD, MODIFY_DELETE, MODIFY_REPLACE, NTLM, SIMPLE
-from impacket.structure import Structure
+from .libs.impacket.structure import Structure
 import socket
 import dns.resolver
 import datetime
 import json
 
 class ADclient:
-    def __init__(self, domain, username, password, hashes, dc_ip, base_dn=None, secure=False):
+    def __init__(self, domain, dc_ip, username=None, password=None, hashes=None, base_dn=None, secure=False, anonymous=False):
         self.domain = domain
         self.username = username
-        self.sam = f"{domain.split('.')[0]}\\{username}"
+        self.sam = f"{domain.split('.')[0]}\\{username}" if username else None
         self.password = password or hashes
         self.dc_ip = dc_ip
         self.base_dn = base_dn
         self.secure = secure
+        self.anonymous = anonymous
         self.domain_root = f"DC={domain.split('.')[0]},DC={domain.split('.')[1]}"
         self.dnsroot = f"DC={domain},CN=MicrosoftDNS,DC=DomainDnsZones,{self.domain_root}"
         self.conn = self.connect_to_ldap()
@@ -25,12 +26,15 @@ class ADclient:
         if self.secure:
             auth = SIMPLE
             dc_url = f"ldaps://{self.dc_ip}:636"
-        
+
         if not self.base_dn:
             self.base_dn = self.domain_root
 
         server = Server(dc_url, use_ssl=self.secure, get_info=ALL)
-        conn = Connection(server, user=self.sam, password=self.password, authentication=auth, auto_bind=True)
+        if self.anonymous:
+            conn = Connection(server, auto_bind=True)
+        else:
+            conn = Connection(server, user=self.sam, password=self.password, authentication=auth, auto_bind=True)
         return conn
 
     def disconnect(self):
@@ -300,7 +304,7 @@ class ADclient:
     # Updating user, computer, or group attributes.
     def modify_ADobject_attributes(self, _object, attributes):
         attributes = json.loads(str(attributes).replace("'", "\""))
-        
+
         if not self.get_ADobject(_object):
             return "Object doesn't exist"
 
@@ -359,3 +363,4 @@ class ADclient:
 
         self.modify_ADobject_attributes(_object, attributes)
         return self.get_ADobject(_object)
+

@@ -5,12 +5,14 @@ with open('README.md', 'r') as f:
 
 setup(
     name='ADmanage',
-    version='0.8',
-    packages=find_packages(),
-    install_requires=[
-        'ldap3',
-        'impacket'
-    ],
+    version='0.9',
     long_description=long_description,
     long_description_content_type='text/markdown',
+    packages=find_packages(include=['ADmanage', 'ADmanage.*']),
+    install_requires=[
+        'ldap3',
+        'six',
+        'dnspython',
+        'pycryptodome'
+    ],
 )
