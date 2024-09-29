@@ -1,3 +1,5 @@
+[![Maintenance mode](https://img.shields.io/badge/maintenance_mode-%F0%9F%9A%A7-grey.svg?labelColor=orange)](#maintenance-mode)
+
 # ADmanage
 
 The provided script is a Python program that interacts with an Active Directory (AD) server using the LDAP protocol. It allows you to perform various operations on DNS entries and AD objects (users, groups and computers).
@@ -191,3 +193,7 @@ result = ad_client.disable_ADobject('jbower-pc$')
 ad_client.disconnect()
 print(result)
 ```
+
+## Maintenance Mode
+There is no active development & new major features are not planned.   
+You can use other alternatives like [ms_active_directory](https://github.com/zorn96/ms_active_directory) or [msldap](https://github.com/skelsec/msldap).
