@@ -1,0 +1,80 @@
+.flask-notify-container {
+  position: fixed;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  pointer-events: none;
+}
+.flask-notify-top-right     { top: 16px; right: 16px; }
+.flask-notify-top-left      { top: 16px; left: 16px; }
+.flask-notify-bottom-right  { bottom: 16px; right: 16px; flex-direction: column-reverse; }
+.flask-notify-bottom-left   { bottom: 16px; left: 16px; flex-direction: column-reverse; }
+.flask-notify-top-center    { top: 16px; left: 50%; transform: translateX(-50%); }
+.flask-notify-bottom-center { bottom: 16px; left: 50%; transform: translateX(-50%); flex-direction: column-reverse; }
+
+.flask-notify-toast {
+  position: relative;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 14px 16px 16px 40px;
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .18);
+  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  text-align: left;
+  cursor: pointer;
+  pointer-events: auto;
+  opacity: .95;
+  animation: flask-notify-in .3s ease-out;
+}
+.flask-notify-toast:hover { opacity: 1; box-shadow: 0 6px 20px rgba(0, 0, 0, .25); }
+
+.flask-notify-title   { display: block; margin-bottom: 2px; font-size: 15px; }
+.flask-notify-message { overflow-wrap: anywhere; }
+
+.flask-notify-close {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: 20px/22px Arial, sans-serif;
+  text-align: center;
+  opacity: .7;
+  cursor: pointer;
+}
+.flask-notify-close:hover { opacity: 1; }
+
+.flask-notify-progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 4px;
+  width: 100%;
+  background: currentColor;
+  opacity: .35;
+  transform-origin: left;
+  animation: flask-notify-progress linear forwards;
+}
+
+.flask-notify-out { animation: flask-notify-out .25s ease-in forwards; }
+
+@keyframes flask-notify-in       { from { opacity: 0; transform: translateY(-12px); } to { opacity: .95; transform: none; } }
+@keyframes flask-notify-out      { to   { opacity: 0; transform: scale(.9); } }
+@keyframes flask-notify-progress { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+/* Phones: full-width popups. */
+@media (max-width: 480px) {
+  .flask-notify-container { left: 8px; right: 8px; width: auto; max-width: none; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flask-notify-toast, .flask-notify-out { animation-duration: 1ms; }
+}
