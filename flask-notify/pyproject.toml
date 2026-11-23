@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flask-notify"
+version = "0.1.0"
+description = "Real-time notification system for Flask: send popup notifications from Python with notify('Wrong password', 'red')."
+readme = "README.md"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
+requires-python = ">=3.9"
+dependencies = ["Flask>=2.2"]
+authors = [{ name = "CobblePot59" }]
+keywords = ["flask", "notification", "real-time", "flash", "popup"]
+classifiers = [
+    "Framework :: Flask",
+    "Programming Language :: Python :: 3",
+    "Environment :: Web Environment",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+]
+
+[project.urls]
+Homepage = "https://github.com/CobblePot59/PyPI/tree/main/flask-notify"
+Source = "https://github.com/CobblePot59/PyPI/tree/main/flask-notify"
+Issues = "https://github.com/CobblePot59/PyPI/issues"
+
+[tool.setuptools.packages.find]
+include = ["flask_notify*"]
+
+[tool.setuptools.package-data]
+flask_notify = ["static/*"]
